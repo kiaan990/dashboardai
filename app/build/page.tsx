@@ -39,55 +39,29 @@ function buildEnvFile(config: DashboardConfig): string {
     `# Fill in YOUR credentials below, then save as .env.local in the project root`,
     ``,
     `NEXTAUTH_URL=http://localhost:3000`,
-    ``,
-    `# ── Your name (shows in the header greeting) ──`,
     `NEXT_PUBLIC_DASHBOARD_NAME=${config.name}`,
     ``,
-    `# ── AI Assistant (required) ──`,
-    `# Get your key at: https://console.anthropic.com`,
+    `# AI Assistant — get from console.anthropic.com`,
     `ANTHROPIC_API_KEY=sk-ant-...`,
     ``,
-    `# ── Database ──`,
     `DATABASE_URL=file:./dev.db`,
     ``,
   ];
-
   if (config.emailProvider === "gmail" || config.emailProvider === "both") {
-    lines.push(
-      `# ── Gmail OAuth ──`,
-      `# 1. Go to: https://console.cloud.google.com`,
-      `# 2. Create a project → Enable Gmail API`,
-      `# 3. OAuth 2.0 credentials → add redirect URI: http://localhost:3000/api/email/gmail?action=callback`,
-      `# 4. Add your email as a test user in OAuth consent screen`,
-      `GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com`,
-      `GOOGLE_CLIENT_SECRET=your-client-secret`,
-      ``,
-    );
+    lines.push(`GOOGLE_CLIENT_ID=`, `GOOGLE_CLIENT_SECRET=`, ``);
   }
-
   if (config.emailProvider === "outlook" || config.emailProvider === "both") {
-    lines.push(
-      `# ── Outlook OAuth ──`,
-      `# 1. Go to: https://portal.azure.com → App registrations`,
-      `# 2. Add redirect URI: http://localhost:3000/api/email/outlook?action=callback`,
-      `MICROSOFT_CLIENT_ID=your-azure-client-id`,
-      `MICROSOFT_CLIENT_SECRET=your-azure-client-secret`,
-      `MICROSOFT_TENANT_ID=common`,
-      ``,
-    );
+    lines.push(`MICROSOFT_CLIENT_ID=`, `MICROSOFT_CLIENT_SECRET=`, `MICROSOFT_TENANT_ID=common`, ``);
   }
-
   if (config.lms === "brightspace") {
     lines.push(
-      `# ── Brightspace / D2L ──`,
       `BRIGHTSPACE_BASE_URL=${config.brightspaceUrl ?? "https://brightspace.yourschool.edu"}`,
       `BRIGHTSPACE_SEMESTER=${config.brightspaceSemester ?? ""}`,
       `BRIGHTSPACE_USER=${config.brightspaceUser ?? config.email}`,
-      `BRIGHTSPACE_PASS=your-brightspace-password`,
-      ``,
+      `BRIGHTSPACE_PASS=`,
+      ``
     );
   }
-
   return lines.join("\n");
 }
 
@@ -111,9 +85,195 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
         color: copied ? "#6ee7b7" : "#9ca3af", fontSize: 11, cursor: "pointer", fontFamily: "inherit",
         transition: "all 0.2s",
       }}
-    >
-      {copied ? "Copied!" : label}
-    </button>
+    >{copied ? "Copied!" : label}</button>
+  );
+}
+
+function EnvGuide({ config }: { config: DashboardConfig }) {
+  const [open, setOpen] = useState<string | null>(null);
+
+  type Field = {
+    key: string;
+    label: string;
+    value: string;
+    steps: { text: string; url?: string; code?: string }[];
+  };
+
+  const fields: Field[] = [
+    {
+      key: "ANTHROPIC_API_KEY",
+      label: "AI Assistant key (ANTHROPIC_API_KEY)",
+      value: "sk-ant-...",
+      steps: [
+        { text: "Go to the Anthropic Console", url: "https://console.anthropic.com" },
+        { text: "Sign up for a free account (or log in)" },
+        { text: "Click your profile → \"API Keys\" → \"Create Key\"" },
+        { text: "Copy the key that starts with sk-ant- and paste it here" },
+      ],
+    },
+    {
+      key: "NEXT_PUBLIC_DASHBOARD_NAME",
+      label: "Your first name (NEXT_PUBLIC_DASHBOARD_NAME)",
+      value: config.name,
+      steps: [
+        { text: `Just type your first name — this is what shows in the greeting. Example: ${config.name}` },
+      ],
+    },
+  ];
+
+  if (config.emailProvider === "gmail" || config.emailProvider === "both") {
+    fields.push(
+      {
+        key: "GOOGLE_CLIENT_ID",
+        label: "Gmail Client ID (GOOGLE_CLIENT_ID)",
+        value: "...apps.googleusercontent.com",
+        steps: [
+          { text: "Go to Google Cloud Console", url: "https://console.cloud.google.com" },
+          { text: "Click \"Select a project\" at the top → \"New Project\" → name it anything (e.g. \"My Dashboard\") → Create" },
+          { text: "In the left sidebar: APIs & Services → Library → search \"Gmail API\" → click Enable" },
+          { text: "APIs & Services → OAuth consent screen → choose External → fill in app name + your email → Save" },
+          { text: "APIs & Services → Credentials → Create Credentials → OAuth client ID → Application type: Web application" },
+          { text: "Under \"Authorized redirect URIs\" add:", code: "https://your-vercel-url.vercel.app/api/email/gmail?action=callback" },
+          { text: "Click Create — copy the Client ID (ends in .apps.googleusercontent.com) and paste here" },
+        ],
+      },
+      {
+        key: "GOOGLE_CLIENT_SECRET",
+        label: "Gmail Client Secret (GOOGLE_CLIENT_SECRET)",
+        value: "GOCSPX-...",
+        steps: [
+          { text: "Same screen as the Client ID — copy the Client Secret shown below the Client ID" },
+          { text: "Also go to OAuth consent screen → Test users → Add your Gmail address so you can log in" },
+        ],
+      }
+    );
+  }
+
+  if (config.emailProvider === "outlook" || config.emailProvider === "both") {
+    fields.push(
+      {
+        key: "MICROSOFT_CLIENT_ID",
+        label: "Outlook Client ID (MICROSOFT_CLIENT_ID)",
+        value: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        steps: [
+          { text: "Go to Azure Portal", url: "https://portal.azure.com" },
+          { text: "Search \"App registrations\" → New registration → name it \"My Dashboard\" → Register" },
+          { text: "Copy the Application (client) ID from the overview page — that's your Client ID" },
+          { text: "Under Authentication → Add a platform → Web → add redirect URI:", code: "https://your-vercel-url.vercel.app/api/email/outlook?action=callback" },
+        ],
+      },
+      {
+        key: "MICROSOFT_CLIENT_SECRET",
+        label: "Outlook Client Secret (MICROSOFT_CLIENT_SECRET)",
+        value: "your-secret",
+        steps: [
+          { text: "In your Azure app: Certificates & secrets → New client secret → Add" },
+          { text: "Copy the Value (not the ID) immediately — it only shows once" },
+        ],
+      },
+      {
+        key: "MICROSOFT_TENANT_ID",
+        label: "Outlook Tenant ID (MICROSOFT_TENANT_ID)",
+        value: "common",
+        steps: [
+          { text: "Type the word: common — this works for all personal Microsoft/Outlook accounts", code: "common" },
+          { text: "Only change this if your school has a specific Microsoft tenant" },
+        ],
+      }
+    );
+  }
+
+  if (config.lms === "brightspace") {
+    fields.push(
+      {
+        key: "BRIGHTSPACE_BASE_URL",
+        label: "Your school's Brightspace URL (BRIGHTSPACE_BASE_URL)",
+        value: config.brightspaceUrl ?? "https://brightspace.yourschool.edu",
+        steps: [
+          { text: `Go to your school's Brightspace login page in a browser` },
+          { text: `Copy just the domain from the address bar — it looks like:`, code: config.brightspaceUrl ?? "https://brightspace.yourschool.edu" },
+        ],
+      },
+      {
+        key: "BRIGHTSPACE_SEMESTER",
+        label: "Current semester (BRIGHTSPACE_SEMESTER)",
+        value: config.brightspaceSemester ?? "spring 2026",
+        steps: [
+          { text: `Type your current semester exactly as it appears in your course names on Brightspace`, code: config.brightspaceSemester ?? "spring 2026" },
+          { text: "Leave blank to show all courses" },
+        ],
+      },
+      {
+        key: "BRIGHTSPACE_USER",
+        label: "Brightspace login email (BRIGHTSPACE_USER)",
+        value: config.brightspaceUser ?? config.email,
+        steps: [
+          { text: `The email or username you use to log into Brightspace at ${config.school}` },
+          { text: `Usually your school email, e.g. ${config.brightspaceUser ?? config.email}` },
+        ],
+      },
+      {
+        key: "BRIGHTSPACE_PASS",
+        label: "Brightspace password (BRIGHTSPACE_PASS)",
+        value: "your-password",
+        steps: [
+          { text: "Your Brightspace login password — stored only on your own server, never shared" },
+          { text: "Note: this only works when running locally (not on Vercel) because it opens a browser for school MFA" },
+        ],
+      }
+    );
+  }
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "#9ca3af", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        How to fill in each field
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {fields.map((field) => (
+          <div key={field.key} style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
+            <button
+              onClick={() => setOpen(open === field.key ? null : field.key)}
+              style={{
+                width: "100%", padding: "11px 14px", background: "rgba(255,255,255,0.03)",
+                border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, textAlign: "left",
+              }}
+            >
+              <span style={{ fontSize: 13, color: "#d1d5db", fontFamily: "monospace", flex: 1 }}>{field.key}</span>
+              <span style={{ fontSize: 12, color: "#635bff", fontWeight: 600, marginRight: 4 }}>{open === field.key ? "hide" : "how?"}</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ transition: "transform 0.2s", transform: open === field.key ? "rotate(180deg)" : "rotate(0deg)", flexShrink: 0 }}>
+                <path d="M2 4l4 4 4-4" stroke="#6b7280" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {open === field.key && (
+              <div style={{ padding: "12px 14px 14px", background: "rgba(0,0,0,0.2)", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#a5a3ff", marginBottom: 10 }}>{field.label}</div>
+                <ol style={{ paddingLeft: 18, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+                  {field.steps.map((step, i) => (
+                    <li key={i} style={{ fontSize: 13, color: "#d1d5db", lineHeight: 1.6 }}>
+                      {step.url ? (
+                        <><span>{step.text} </span><a href={step.url} target="_blank" rel="noopener noreferrer" style={{ color: "#635bff", textDecoration: "underline" }}>{step.url}</a></>
+                      ) : step.text}
+                      {step.code && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 5 }}>
+                          <code style={{ background: "rgba(99,91,255,0.12)", border: "1px solid rgba(99,91,255,0.2)", padding: "4px 10px", borderRadius: 6, fontSize: 12, color: "#c4b5fd", flex: 1, overflowX: "auto" }}>
+                            {step.code}
+                          </code>
+                          <CopyButton text={step.code} />
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+                <div style={{ marginTop: 12, padding: "8px 12px", borderRadius: 7, background: "rgba(99,91,255,0.08)", border: "1px solid rgba(99,91,255,0.15)", fontSize: 12, color: "#9ca3af" }}>
+                  Paste value: <code style={{ color: "#c4b5fd" }}>{field.value}</code>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -124,21 +284,17 @@ function SetupGuide({ config }: { config: DashboardConfig }) {
     const blob = new Blob([envContent], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = ".env.local";
-    a.click();
+    a.href = url; a.download = ".env.local"; a.click();
     URL.revokeObjectURL(url);
   }
 
-  const vercelDeployUrl = `https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fkiaan990%2Fkiaan99&project-name=${encodeURIComponent(config.name.toLowerCase().replace(/\s+/g, "-") + "-dashboard")}&env=ANTHROPIC_API_KEY,NEXT_PUBLIC_DASHBOARD_NAME${config.emailProvider !== "none" && config.emailProvider !== "" ? ",GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET" : ""}${config.lms === "brightspace" ? ",BRIGHTSPACE_BASE_URL,BRIGHTSPACE_SEMESTER,BRIGHTSPACE_USER,BRIGHTSPACE_PASS" : ""}`;
-
-  const steps: { title: string; code?: string; label?: string; extra?: React.ReactNode }[] = [
+  const localSteps: { title: string; code?: string; label?: string; extra?: React.ReactNode }[] = [
     {
       title: "Clone the repo",
       code: `git clone https://github.com/kiaan990/kiaan99.git my-dashboard\ncd my-dashboard\nnpm install`,
     },
     {
-      title: "Add your .env.local",
+      title: "Create your .env.local file",
       code: envContent,
       label: ".env.local",
       extra: (
@@ -146,8 +302,7 @@ function SetupGuide({ config }: { config: DashboardConfig }) {
           display: "flex", alignItems: "center", gap: 8, padding: "8px 16px",
           borderRadius: 8, border: "1px solid rgba(99,91,255,0.4)",
           background: "rgba(99,91,255,0.12)", color: "#a5a3ff",
-          fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-          marginTop: 10,
+          fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", marginTop: 10,
         }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M7 1v8M4 6l3 3 3-3M2 11h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -156,19 +311,13 @@ function SetupGuide({ config }: { config: DashboardConfig }) {
         </button>
       ),
     },
-    {
-      title: "Set up the database",
-      code: `npx prisma migrate dev --name init`,
-    },
-    {
-      title: "Run your dashboard",
-      code: `npm run dev\n# Open http://localhost:3000`,
-    },
+    { title: "Set up the database", code: `npx prisma migrate dev --name init` },
+    { title: "Start your dashboard", code: `npm run dev\n# Open http://localhost:3000` },
   ];
 
   return (
     <div className="animate-fade-in" style={{ paddingBottom: 32 }}>
-      {/* Summary card */}
+      {/* Summary */}
       <div style={{
         padding: "20px 24px", borderRadius: 14, marginBottom: 24,
         background: "linear-gradient(135deg, rgba(99,91,255,0.15), rgba(124,58,237,0.1))",
@@ -179,64 +328,28 @@ function SetupGuide({ config }: { config: DashboardConfig }) {
         <div style={{ fontSize: 13, color: "#9ca3af", marginBottom: 16 }}>{config.school}</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {config.features.map((f) => (
-            <span key={f} style={{
-              padding: "4px 10px", borderRadius: 100, fontSize: 12,
-              background: "rgba(99,91,255,0.2)", border: "1px solid rgba(99,91,255,0.3)", color: "#a5a3ff"
-            }}>{FEATURE_LABELS[f] ?? f}</span>
+            <span key={f} style={{ padding: "4px 10px", borderRadius: 100, fontSize: 12, background: "rgba(99,91,255,0.2)", border: "1px solid rgba(99,91,255,0.3)", color: "#a5a3ff" }}>
+              {FEATURE_LABELS[f] ?? f}
+            </span>
           ))}
         </div>
       </div>
 
-      {/* Deploy to Vercel button (shortcut option) */}
-      <div style={{
-        padding: "16px 20px", borderRadius: 12, marginBottom: 20,
-        background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)"
-      }}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Option A — Deploy to Vercel (fastest)</div>
-        <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 12 }}>
-          One-click fork + deploy. You&apos;ll enter your API keys in Vercel&apos;s UI.
-        </div>
-        <a href={vercelDeployUrl} target="_blank" rel="noopener noreferrer" style={{
-          display: "inline-flex", alignItems: "center", gap: 8,
-          padding: "9px 18px", borderRadius: 9,
-          background: "#000", border: "1px solid rgba(255,255,255,0.15)",
-          color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none",
-        }}>
-          <svg height="16" viewBox="0 0 76 65" fill="white">
-            <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
-          </svg>
-          Deploy with Vercel
-        </a>
-      </div>
+      {/* Env var guide */}
+      <EnvGuide config={config} />
 
-      {/* Divider */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
-        <span style={{ fontSize: 12, color: "#4b5563" }}>or run locally (Option B)</span>
-        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
-      </div>
-
-      {/* Step-by-step */}
+      {/* Local steps */}
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {steps.map((step, i) => (
+        {localSteps.map((step, i) => (
           <div key={i} style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", overflow: "hidden" }}>
             <div style={{ padding: "11px 16px", background: "rgba(255,255,255,0.03)", display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{
-                width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: "rgba(99,91,255,0.25)", color: "#a5a3ff", fontSize: 11, fontWeight: 700
-              }}>{i + 1}</span>
+              <span style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(99,91,255,0.25)", color: "#a5a3ff", fontSize: 11, fontWeight: 700 }}>{i + 1}</span>
               <span style={{ fontWeight: 600, fontSize: 14 }}>{step.title}</span>
               {step.label && <span style={{ marginLeft: "auto", fontSize: 11, color: "#6b7280", fontFamily: "monospace" }}>{step.label}</span>}
               {step.code && <span style={{ marginLeft: step.label ? 8 : "auto" }}><CopyButton text={step.code} /></span>}
             </div>
             {step.code && (
-              <pre style={{
-                margin: 0, padding: "12px 16px",
-                fontSize: 12, lineHeight: 1.7, overflowX: "auto",
-                background: "rgba(0,0,0,0.35)", color: "#d1d5db", fontFamily: "monospace",
-                maxHeight: i === 1 ? 200 : undefined, overflowY: i === 1 ? "auto" : undefined,
-              }}>
+              <pre style={{ margin: 0, padding: "12px 16px", fontSize: 12, lineHeight: 1.7, overflowX: "auto", background: "rgba(0,0,0,0.35)", color: "#d1d5db", fontFamily: "monospace", maxHeight: i === 1 ? 180 : undefined, overflowY: i === 1 ? "auto" : undefined }}>
                 <code>{step.code}</code>
               </pre>
             )}
@@ -245,20 +358,14 @@ function SetupGuide({ config }: { config: DashboardConfig }) {
         ))}
       </div>
 
-      {/* Context-specific notes */}
-      {config.emailProvider === "gmail" && (
-        <div style={{ marginTop: 14, padding: "13px 16px", borderRadius: 10, background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.2)", fontSize: 13, color: "#93c5fd" }}>
-          <strong>Gmail tip:</strong> After setting your Google credentials, visit <code style={{ background: "rgba(255,255,255,0.08)", padding: "1px 5px", borderRadius: 4 }}>http://localhost:3000</code>, click the Email panel, and hit &quot;Connect Gmail&quot; to authorize.
-        </div>
-      )}
       {config.lms === "brightspace" && (
-        <div style={{ marginTop: 10, padding: "13px 16px", borderRadius: 10, background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.2)", fontSize: 13, color: "#fcd34d" }}>
-          <strong>Brightspace note:</strong> The sync opens a real browser window for your school&apos;s MFA — this only works when running locally, not on Vercel.
+        <div style={{ marginTop: 14, padding: "13px 16px", borderRadius: 10, background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.2)", fontSize: 13, color: "#fcd34d" }}>
+          <strong>Brightspace note:</strong> The sync opens a browser window for your school&apos;s MFA — this only works when running locally, not on Vercel.
         </div>
       )}
       {(config.lms === "canvas" || config.lms === "blackboard" || config.lms === "moodle") && (
         <div style={{ marginTop: 10, padding: "13px 16px", borderRadius: 10, background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", fontSize: 13, color: "#fca5a5" }}>
-          <strong>LMS note:</strong> The dashboard currently has native integration for Brightspace/D2L. {config.lms.charAt(0).toUpperCase() + config.lms.slice(1)} support isn&apos;t built-in yet — you can still import your calendar as an .ics file from your LMS.
+          <strong>LMS note:</strong> Native integration is currently available for Brightspace/D2L only. You can still import your {config.lms.charAt(0).toUpperCase() + config.lms.slice(1)} calendar as an .ics file.
         </div>
       )}
     </div>
@@ -286,7 +393,6 @@ export default function BuildPage() {
     setInput("");
     setLoading(true);
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
-
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -294,11 +400,9 @@ export default function BuildPage() {
         body: JSON.stringify({ messages: newMessages.map((m) => ({ role: m.role, content: m.content })) }),
       });
       if (!res.ok) throw new Error("Failed");
-
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let accumulated = "";
-
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -306,7 +410,6 @@ export default function BuildPage() {
         const snap = accumulated;
         setMessages((prev) => { const u = [...prev]; u[u.length - 1] = { role: "assistant", content: snap }; return u; });
       }
-
       const detected = extractConfig(accumulated);
       if (detected) setConfig(detected);
     } catch {
@@ -323,12 +426,9 @@ export default function BuildPage() {
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", maxWidth: 720, margin: "0 auto", padding: "0 20px" }}>
-      {/* Header */}
       <header style={{ padding: "20px 0", display: "flex", alignItems: "center", gap: 16, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <Link href="/" style={{ color: "#6b7280", textDecoration: "none", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
           Back
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -344,13 +444,11 @@ export default function BuildPage() {
         </div>
       </header>
 
-      {/* Messages */}
       <div style={{ flex: 1, overflowY: "auto", padding: "24px 0", display: "flex", flexDirection: "column", gap: 20 }}>
         {messages.map((msg, i) => {
           const isLast = i === messages.length - 1;
           const hasConfig = isLast && !!extractConfig(msg.content);
           const displayContent = hasConfig ? stripConfig(msg.content) : msg.content;
-
           return (
             <div key={i} className="animate-fade-in" style={{ display: "flex", flexDirection: msg.role === "user" ? "row-reverse" : "row", alignItems: "flex-start", gap: 12 }}>
               {msg.role === "assistant" && (
@@ -383,14 +481,9 @@ export default function BuildPage() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
       {!config && (
         <div style={{ padding: "16px 0 24px" }}>
-          <div style={{
-            display: "flex", gap: 10, alignItems: "flex-end",
-            background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)",
-            borderRadius: 14, padding: "10px 12px 10px 16px",
-          }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-end", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: "10px 12px 10px 16px" }}>
             <textarea
               ref={inputRef}
               value={input}
@@ -403,30 +496,17 @@ export default function BuildPage() {
               placeholder="Type your message..."
               rows={1}
               disabled={loading}
-              style={{
-                flex: 1, background: "transparent", border: "none", outline: "none",
-                color: "#e8eaf0", fontSize: 14.5, resize: "none", lineHeight: 1.6,
-                fontFamily: "inherit", maxHeight: 120, overflow: "auto",
-              }}
+              style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "#e8eaf0", fontSize: 14.5, resize: "none", lineHeight: 1.6, fontFamily: "inherit", maxHeight: 120, overflow: "auto" }}
             />
             <button
               onClick={send}
               disabled={loading || !input.trim()}
-              style={{
-                width: 36, height: 36, borderRadius: 9, border: "none",
-                cursor: loading || !input.trim() ? "default" : "pointer",
-                background: loading || !input.trim() ? "rgba(99,91,255,0.3)" : "linear-gradient(135deg, #635bff, #7c3aed)",
-                color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-              }}
+              style={{ width: 36, height: 36, borderRadius: 9, border: "none", cursor: loading || !input.trim() ? "default" : "pointer", background: loading || !input.trim() ? "rgba(99,91,255,0.3)" : "linear-gradient(135deg, #635bff, #7c3aed)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M13 8L3 3l2 5-2 5 10-5z" fill="currentColor" />
-              </svg>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 8L3 3l2 5-2 5 10-5z" fill="currentColor" /></svg>
             </button>
           </div>
-          <p style={{ textAlign: "center", fontSize: 12, color: "#374151", marginTop: 10 }}>
-            Press Enter to send · Shift+Enter for new line
-          </p>
+          <p style={{ textAlign: "center", fontSize: 12, color: "#374151", marginTop: 10 }}>Press Enter to send · Shift+Enter for new line</p>
         </div>
       )}
     </div>

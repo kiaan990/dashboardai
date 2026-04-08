@@ -76,6 +76,10 @@ export default function Home() {
       <p className="animate-fade-up" style={{ animationDelay: "0.25s", opacity: 0, fontSize: 13, color: "#4b5563", textAlign: "center" }}>
         No account needed · Fully customizable · Powered by Claude AI
       </p>
+
+      <p className="animate-fade-up" style={{ animationDelay: "0.35s", opacity: 0, fontSize: 12, color: "#1f2937", textAlign: "center", marginTop: 16 }}>
+        Renovating the world — Kiaan Hira
+      </p>
     </main>
   );
 }
